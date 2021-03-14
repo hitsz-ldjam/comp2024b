@@ -1,0 +1,30 @@
+# common
+*.dll
+*.lib
+*.pdb
+imgui.ini
+.clang-format
+temp/
+
+# Visual Studio
+.vs/
+_ReSharper.Caches/
+Debug/
+x64/
+*.filters
+*.sln
+*.user
+*.vcxproj
+.vsconfig
+
+
+# CLion
+cmake-*/
+.idea
+
+# vscode
+.vscode/
+
+
+third_party/
+res/
