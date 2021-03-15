@@ -33,7 +33,7 @@ struct GuiImpl {
     // todo add cursor support
 };
 
-static GuiImpl* GUI_IMPL = nullptr;
+static GuiImpl* s_gui_impl = nullptr;
 
 void Gui::begin_frame(i32 width, i32 height, float w_scale, float h_scale) {
     ImGuiIO& io    = ImGui::GetIO();
@@ -76,12 +76,12 @@ void Gui::render() {
         uint32_t num_indices        = (uint32_t)draw_list->IdxBuffer.size();
 
         // check buffer capacity
-        if (!(num_vertices == bgfx::getAvailTransientVertexBuffer(num_vertices, GUI_IMPL->vertex_layout)
+        if (!(num_vertices == bgfx::getAvailTransientVertexBuffer(num_vertices, s_gui_impl->vertex_layout)
               && (num_indices == 0 || num_indices == bgfx::getAvailTransientIndexBuffer(num_indices)))) {
             break;
         }
 
-        bgfx::allocTransientVertexBuffer(&tvb, num_vertices, GUI_IMPL->vertex_layout);
+        bgfx::allocTransientVertexBuffer(&tvb, num_vertices, s_gui_impl->vertex_layout);
         bgfx::allocTransientIndexBuffer(&tib, num_indices, sizeof(ImDrawIdx) == 4);
 
         ImDrawVert* verts  = (ImDrawVert*)tvb.data;
@@ -99,8 +99,8 @@ void Gui::render() {
                             | BGFX_STATE_WRITE_RGB
                             | BGFX_STATE_WRITE_A
                             | BGFX_STATE_MSAA;
-                bgfx::TextureHandle tex    = GUI_IMPL->texture;
-                bgfx::ProgramHandle shader = GUI_IMPL->shader;
+                bgfx::TextureHandle tex    = s_gui_impl->texture;
+                bgfx::ProgramHandle shader = s_gui_impl->shader;
 
                 if (cmd.TextureId != NULL) {
                     union {
@@ -117,8 +117,8 @@ void Gui::render() {
                     tex = texture.s.handle;
                     if (0 != texture.s.mip) {
                         const float lodEnabled[4] = { float(texture.s.mip), 1.0f, 0.0f, 0.0f };
-                        bgfx::setUniform(GUI_IMPL->image_lod_enabled, lodEnabled);
-                        shader = GUI_IMPL->image_shader;
+                        bgfx::setUniform(s_gui_impl->image_lod_enabled, lodEnabled);
+                        shader = s_gui_impl->image_shader;
                     }
                 }
                 else {
@@ -133,7 +133,7 @@ void Gui::render() {
                                  u16(bx::min(cmd.ClipRect.w, 65535.0f) - yy));
 
                 bgfx::setState(state);
-                bgfx::setTexture(0, GUI_IMPL->sampler, tex);
+                bgfx::setTexture(0, s_gui_impl->sampler, tex);
                 bgfx::setVertexBuffer(0, &tvb, 0, num_vertices);
                 bgfx::setIndexBuffer(&tib, offset, cmd.ElemCount);
                 bgfx::submit(0, shader);
@@ -144,8 +144,8 @@ void Gui::render() {
 }
 
 bool Gui::init() {
-    assert(GUI_IMPL == nullptr && "gui is initialized twice");
-    GUI_IMPL = new GuiImpl();
+    assert(s_gui_impl == nullptr && "gui is initialized twice");
+    s_gui_impl = new GuiImpl();
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -181,21 +181,21 @@ bool Gui::init() {
     // init shader
     {
         bgfx::RendererType::Enum type = bgfx::getRendererType();
-        GUI_IMPL->shader              = bgfx::createProgram(
+        s_gui_impl->shader              = bgfx::createProgram(
             bgfx::createEmbeddedShader(EMBEDDED_SHADER, type, "vs_ocornut_imgui"),
             bgfx::createEmbeddedShader(EMBEDDED_SHADER, type, "fs_ocornut_imgui"),
             true);
 
-        GUI_IMPL->image_lod_enabled = bgfx::createUniform("image_lod_enabled", bgfx::UniformType::Vec4);
+        s_gui_impl->image_lod_enabled = bgfx::createUniform("image_lod_enabled", bgfx::UniformType::Vec4);
 
-        GUI_IMPL->image_shader = bgfx::createProgram(
+        s_gui_impl->image_shader = bgfx::createProgram(
             bgfx::createEmbeddedShader(EMBEDDED_SHADER, type, "vs_imgui_image"),
             bgfx::createEmbeddedShader(EMBEDDED_SHADER, type, "fs_imgui_image"),
             true);
 
-        GUI_IMPL->sampler = bgfx::createUniform("s_tex", bgfx::UniformType::Sampler);
+        s_gui_impl->sampler = bgfx::createUniform("s_tex", bgfx::UniformType::Sampler);
 
-        GUI_IMPL->vertex_layout
+        s_gui_impl->vertex_layout
             .begin()
             .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
             .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
@@ -214,9 +214,9 @@ bool Gui::init() {
         config.MergeMode            = false;
 
         if (fs::exists(font_path)) {
-            GUI_IMPL->font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 16, &config, ranges);
+            s_gui_impl->font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 16, &config, ranges);
         } else {
-            GUI_IMPL->font              = io.Fonts->AddFontDefault(&config);
+            s_gui_impl->font              = io.Fonts->AddFontDefault(&config);
         }
 
         uint8_t* data;
@@ -224,7 +224,7 @@ bool Gui::init() {
         int32_t height;
         io.Fonts->GetTexDataAsRGBA32(&data, &width, &height);
 
-        GUI_IMPL->texture = bgfx::createTexture2D(
+        s_gui_impl->texture = bgfx::createTexture2D(
             (uint16_t)width,
             (uint16_t)height,
             false,
@@ -233,7 +233,7 @@ bool Gui::init() {
             0,
             bgfx::copy(data, width * height * 4));
 
-        bgfx::setName(GUI_IMPL->texture, "gui_font_texture");
+        bgfx::setName(s_gui_impl->texture, "gui_font_texture");
     }
 
     return true;
@@ -247,8 +247,8 @@ void Gui::quit() {
     // bgfx::destroy(GUI_IMPL->image_lod_enabled);
     // bgfx::destroy(GUI_IMPL->texture);
     // bgfx::destroy(GUI_IMPL->sampler);
-    delete GUI_IMPL;
-    GUI_IMPL = nullptr;
+    delete s_gui_impl;
+    s_gui_impl = nullptr;
 }
 
 void Gui::process_event(const SDL_Event& event) {

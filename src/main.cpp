@@ -2,6 +2,8 @@
 #include <SDL2/SDL.h>
 #include <imgui/imgui.h>
 
+#include "times.h"
+
 class Demo : public App {
 public:
     AppSetup on_init() override {
@@ -25,6 +27,13 @@ public:
 
     void on_gui() override {
         ImGui::ShowDemoWindow();
+        ImGui::SetNextWindowSize(ImVec2(200, 100));
+        ImGui::Begin("time test", nullptr, ImGuiWindowFlags_NoCollapse);
+        {
+            ImGui::Text("delta time: %f", Time::delta());
+            ImGui::Text("real time: %f", Time::real());
+        }
+        ImGui::End();
     }
 
     bool on_closing() override {

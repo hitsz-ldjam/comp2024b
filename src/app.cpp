@@ -4,6 +4,7 @@
 #include <SDL2/SDL_syswm.h>
 #include <bgfx/bgfx.h>
 #include "gui.h"
+#include "times.h"
 
 int App::run(int argc, char** argv) {
     (void)argc;
@@ -19,10 +20,14 @@ int App::run(int argc, char** argv) {
     if (!Gui::init())
         return -1;
 
+    if(!Time::init())
+        return -1;
+
     on_start();
     main_loop();
     on_quit();
 
+    Time::quit();
     Gui::quit();
     quit_bgfx();
     quit_sdl2();
@@ -39,6 +44,9 @@ void App::main_loop() {
             }
             Gui::process_event(event);
         }
+
+        Time::tick();
+
         Gui::begin_frame(width, height, float(draw_width) / width, float(draw_height) / height);
         on_gui();
         Gui::end_frame();
