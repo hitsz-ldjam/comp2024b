@@ -5,6 +5,7 @@
 #include <bgfx/bgfx.h>
 #include "gui.h"
 #include "times.h"
+#include "input.h"
 
 int App::run(int argc, char** argv) {
     (void)argc;
@@ -23,10 +24,14 @@ int App::run(int argc, char** argv) {
     if(!Time::init())
         return -1;
 
+    if(!Input::init())
+        return -1;
+
     on_start();
     main_loop();
     on_quit();
 
+    Input::quit();
     Time::quit();
     Gui::quit();
     quit_bgfx();
@@ -37,12 +42,16 @@ int App::run(int argc, char** argv) {
 void App::main_loop() {
     SDL_Event event;
     while (!quit) {
+        Input::new_frame();
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 quit = true;
                 break;
             }
-            Gui::process_event(event);
+
+            if(!Gui::process_event(event)) {
+                Input::process_event(event);
+            }
         }
 
         Time::tick();
@@ -50,14 +59,6 @@ void App::main_loop() {
         Gui::begin_frame(width, height, float(draw_width) / width, float(draw_height) / height);
         on_gui();
         Gui::end_frame();
-
-        if (!Gui::want_capture_mouse()) {
-            // todo update mouse
-        }
-
-        if(!Gui::want_capture_keyboard()) {
-            // todo update keyboard
-        }
 
         on_update();
 

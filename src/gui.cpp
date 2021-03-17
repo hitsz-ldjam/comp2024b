@@ -251,8 +251,10 @@ void Gui::quit() {
     s_gui_impl = nullptr;
 }
 
-void Gui::process_event(const SDL_Event& event) {
+bool Gui::process_event(const SDL_Event& event) {
     ImGuiIO& io = ImGui::GetIO();
+    bool is_mouse = false;
+    bool is_keyboard = false;
     switch (event.type) {
     case SDL_MOUSEWHEEL:
         if (event.wheel.x > 0)
@@ -263,6 +265,7 @@ void Gui::process_event(const SDL_Event& event) {
             io.MouseWheel += 1;
         if (event.wheel.y < 0)
             io.MouseWheel -= 1;
+        is_mouse = true;
         break;
 
     case SDL_MOUSEBUTTONDOWN:
@@ -274,6 +277,7 @@ void Gui::process_event(const SDL_Event& event) {
         case SDL_BUTTON_X2: io.MouseDown[4] = true; break;
         default: break;
         }
+        is_mouse = true;
         break;
 
     case SDL_MOUSEBUTTONUP:
@@ -285,10 +289,12 @@ void Gui::process_event(const SDL_Event& event) {
         case SDL_BUTTON_X2: io.MouseDown[4] = false; break;
         default: break;
         }
+        is_mouse = true;
         break;
 
     case SDL_MOUSEMOTION:
         io.MousePos = ImVec2(event.motion.x, event.motion.y);
+        is_mouse = true;
         break;
 
     case SDL_KEYDOWN:
@@ -301,6 +307,7 @@ void Gui::process_event(const SDL_Event& event) {
             io.KeyAlt = true;
         if (event.key.keysym.mod & KMOD_GUI)
             io.KeySuper = true;
+        is_keyboard = true;
         break;
 
     case SDL_KEYUP:
@@ -313,6 +320,7 @@ void Gui::process_event(const SDL_Event& event) {
             io.KeyAlt = false;
         if (event.key.keysym.mod & KMOD_GUI)
             io.KeySuper = false;
+        is_keyboard = true;
         break;
 
     case SDL_TEXTINPUT:
@@ -321,12 +329,7 @@ void Gui::process_event(const SDL_Event& event) {
         }
         break;
     }
+
+    return (is_mouse && io.WantCaptureMouse) || (is_keyboard && io.WantCaptureKeyboard);
 }
 
-bool Gui::want_capture_mouse() {
-    return ImGui::GetIO().WantCaptureMouse;
-}
-
-bool Gui::want_capture_keyboard() {
-    return ImGui::GetIO().WantCaptureKeyboard;
-}

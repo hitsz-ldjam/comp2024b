@@ -17,7 +17,9 @@ target_sources(main
         PRIVATE
         src/app.cpp
         src/gui.cpp
-        src/times.cpp)
+        src/times.cpp
+        src/input.cpp)
+
 target_include_directories(main PRIVATE ${ROOT_DIR}/include)
 set_property(TARGET main PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 set_property(TARGET main PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${ROOT_DIR}")
