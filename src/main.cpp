@@ -9,13 +9,14 @@
 class Demo : public App {
 public:
     AppSetup on_init() override {
-        return AppSetup{
-            .title    = "Demo",
-            .centered = true,
-            .width    = 1280,
-            .height   = 720,
-            .flags    = SDL_WINDOW_SHOWN
-        };
+        // msvc does not support designated initializer
+        AppSetup as;
+        as.title = "Demo";
+        as.centered = true;
+        as.width = 1280;
+        as.height = 720;
+        as.flags = SDL_WINDOW_SHOWN;
+        return as;
     }
 
     void on_start() override {

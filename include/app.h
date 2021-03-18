@@ -16,6 +16,7 @@ class App {
 public:
     App()          = default;
     virtual ~App() = default;
+    App(const App&) = delete;
 
     virtual AppSetup on_init() = 0;
     virtual void on_start(){};
