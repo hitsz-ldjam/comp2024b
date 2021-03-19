@@ -18,7 +18,10 @@ target_sources(main
         src/app.cpp
         src/gui.cpp
         src/times.cpp
-        src/input.cpp)
+        src/input.cpp
+        src/gfx.cpp
+        src/window.cpp
+        src/screen.cpp)
 
 target_include_directories(main PRIVATE ${ROOT_DIR}/include)
 set_property(TARGET main PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")

@@ -5,6 +5,9 @@
 
 #include "times.h"
 #include "input.h"
+#include "gfx.h"
+#include "screen.h"
+#include "window.h"
 
 class Demo : public App {
 public:
@@ -32,12 +35,22 @@ public:
         ImGui::ShowDemoWindow();
         ImGui::Begin("Test", nullptr, ImGuiWindowFlags_NoCollapse);
         {
-            if (ImGui::CollapsingHeader("Time", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanFullWidth)) {
+            if (ImGui::CollapsingHeader("Screen")) {
+                ImGui::Text("window size: (%d, %d)", Screen::width(), Screen::height());
+                ImGui::Text("window drawable size: (%d, %d)", Screen::draw_width(), Screen::draw_height());
+            }
+
+            if(ImGui::CollapsingHeader("Gfx")) {
+                ImGui::Text("main view: %u", Gfx::main_view());
+                ImGui::Text("gui view: %u", Gfx::gui_view());
+            }
+
+            if (ImGui::CollapsingHeader("Time")) {
                 ImGui::Text("delta time: %f", Time::delta());
                 ImGui::Text("real time: %f", Time::real());
             }
 
-            if (ImGui::CollapsingHeader("Input", ImGuiTreeNodeFlags_SpanFullWidth)) {
+            if (ImGui::CollapsingHeader("Input")) {
                 ImGui::Text("Mouse");
                 glm::ivec2 xy;
                 xy = Input::mouse_pos();

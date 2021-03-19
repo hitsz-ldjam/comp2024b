@@ -7,6 +7,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <SDL2/SDL.h>
+#include "screen.h"
+#include "gfx.h"
 
 #include "embedded/shaders/vs_ocornut_imgui.bin.h"
 #include "embedded/shaders/fs_ocornut_imgui.bin.h"
@@ -63,8 +65,8 @@ void Gui::render() {
         else {
             mat = glm::orthoLH_ZO(0.0f, width, height, 0.0f, 0.0f, 100.0f);
         }
-        bgfx::setViewTransform(0, nullptr, glm::value_ptr(mat));
-        bgfx::setViewRect(0, 0, 0, (u16)width, (u16)height);
+        bgfx::setViewTransform(Gfx::gui_view(), nullptr, glm::value_ptr(mat));
+        bgfx::setViewRect(Gfx::gui_view(), 0, 0, (u16)width, (u16)height);
     }
 
     for (i32 i = 0; i < draw_data->CmdListsCount; ++i) {
@@ -136,7 +138,7 @@ void Gui::render() {
                 bgfx::setTexture(0, s_gui_impl->sampler, tex);
                 bgfx::setVertexBuffer(0, &tvb, 0, num_vertices);
                 bgfx::setIndexBuffer(&tib, offset, cmd.ElemCount);
-                bgfx::submit(0, shader);
+                bgfx::submit(Gfx::gui_view(), shader);
             }
             offset += cmd.ElemCount;
         }
@@ -333,3 +335,10 @@ bool Gui::process_event(const SDL_Event& event) {
     return (is_mouse && io.WantCaptureMouse) || (is_keyboard && io.WantCaptureKeyboard);
 }
 
+void Gui::begin_frame_screen() {
+    i32 width = Screen::width();
+    i32 height = Screen::height();
+    float w_scale = float(Screen::draw_width()) / width;
+    float h_scale = float(Screen::draw_height()) / height;
+    begin_frame(width, height, w_scale, h_scale);
+}
