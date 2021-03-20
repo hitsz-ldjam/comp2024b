@@ -11,7 +11,7 @@
 
 class Demo : public App {
 public:
-    AppSetup on_init() override {
+    AppSetup on_setup() override {
         // msvc does not support designated initializer
         AppSetup as;
         as.title = "Demo";
@@ -20,6 +20,9 @@ public:
         as.height = 720;
         as.flags = SDL_WINDOW_SHOWN;
         return as;
+    }
+
+    void on_awake() override {
     }
 
     void on_start() override {
@@ -35,6 +38,10 @@ public:
         ImGui::ShowDemoWindow();
         ImGui::Begin("Test", nullptr, ImGuiWindowFlags_NoCollapse);
         {
+            if(ImGui::Button("Quit")){
+                request_quit();
+            }
+
             if (ImGui::CollapsingHeader("Screen")) {
                 ImGui::Text("window size: (%d, %d)", Screen::width(), Screen::height());
                 ImGui::Text("window drawable size: (%d, %d)", Screen::draw_width(), Screen::draw_height());
@@ -90,7 +97,4 @@ public:
     }
 };
 
-int main(int argc, char** argv) {
-    setbuf(stdout, 0); // for debug print
-    return Demo().run(argc, argv);
-}
+LAUNCH_APP(Demo)
