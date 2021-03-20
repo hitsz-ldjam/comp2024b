@@ -10,7 +10,20 @@ enum ViewId : u16 {
     VID_GUI = 32
 };
 
+struct GfxImpl {
+    // back-buffer settings
+    i32 width;
+    i32 height;
+    u32 flags;
+    bgfx::TextureFormat::Enum format;
+};
+
+static GfxImpl* s_gfx_impl = nullptr;
+
 bool Gfx::init(Window& window) {
+    assert(s_gfx_impl == nullptr && "gfx is initialized twice");
+    s_gfx_impl = new GfxImpl();
+
     SDL_Window* raw_win = window.get_raw();
     SDL_SysWMinfo wminfo;
     SDL_VERSION(&wminfo.version)
@@ -37,6 +50,11 @@ bool Gfx::init(Window& window) {
     if (!bgfx::init(init))
         return false;
 
+    s_gfx_impl->width  = width;
+    s_gfx_impl->height = height;
+    s_gfx_impl->flags  = init.resolution.reset;
+    s_gfx_impl->format = init.resolution.format;
+
     bgfx::setViewRect(VID_Main, 0, 0, width, height);
     bgfx::setViewClear(VID_Main, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000ff, 1.0f, 0);
     return true;
@@ -44,6 +62,8 @@ bool Gfx::init(Window& window) {
 
 void Gfx::quit() {
     bgfx::shutdown();
+    delete s_gfx_impl;
+    s_gfx_impl = nullptr;
 }
 
 u16 Gfx::main_view() {
@@ -53,6 +73,18 @@ u16 Gfx::main_view() {
 u16 Gfx::gui_view() {
     return VID_GUI;
 }
+
+void Gfx::before_render(i32 width, i32 height) {
+    // check if we need to resize bgfx back-buffer
+    if (width != s_gfx_impl->width || height != s_gfx_impl->height) {
+        s_gfx_impl->width  = width;
+        s_gfx_impl->height = height;
+        bgfx::reset((u32)s_gfx_impl->width, (u32)s_gfx_impl->height, s_gfx_impl->flags, s_gfx_impl->format);
+        // set view rect to cover the whole back-buffer, user can change this later
+        bgfx::setViewRect(VID_Main, 0, 0, (u16)width, (u16)height);
+    }
+}
+
 void Gfx::render() {
     bgfx::touch(VID_Main);
     bgfx::frame();

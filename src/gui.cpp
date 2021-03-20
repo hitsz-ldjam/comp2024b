@@ -334,11 +334,3 @@ bool Gui::process_event(const SDL_Event& event) {
 
     return (is_mouse && io.WantCaptureMouse) || (is_keyboard && io.WantCaptureKeyboard);
 }
-
-void Gui::begin_frame_screen() {
-    i32 width = Screen::width();
-    i32 height = Screen::height();
-    float w_scale = float(Screen::draw_width()) / width;
-    float h_scale = float(Screen::draw_height()) / height;
-    begin_frame(width, height, w_scale, h_scale);
-}

@@ -106,17 +106,24 @@ AppState App::running() {
 
     Time::tick();
 
-    // update gui
-    Gui::begin_frame_screen();
+    glm::ivec2 size = Screen::size();
+    glm::ivec2 draw_size = Screen::draw_size();
+    float w_scale = float(draw_size.x) / size.x;
+    float h_scale = float(draw_size.y) / size.y;
+
+    // update gui, just generate data for gui rendering
+    // the actual rendering will be performed later
+    Gui::begin_frame(size.x, size.y, w_scale, h_scale);
     on_gui();
     Gui::end_frame();
 
     // update scene
     on_update();
 
+    Gfx::before_render(draw_size.x, draw_size.y);
     // render scene
     on_render();
-
+    // render gui
     Gui::render();
     Gfx::render();
 

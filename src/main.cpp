@@ -18,7 +18,7 @@ public:
         as.centered = true;
         as.width = 1280;
         as.height = 720;
-        as.flags = SDL_WINDOW_SHOWN;
+        as.flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
         return as;
     }
 

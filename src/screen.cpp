@@ -31,6 +31,10 @@ void Screen::quit() {
     s_screen_impl = nullptr;
 }
 
+glm::ivec2 Screen::size() {
+    return s_screen_impl->window.size();
+}
+
 i32 Screen::width() {
     return s_screen_impl->window.width();
 }
@@ -39,8 +43,8 @@ i32 Screen::height() {
     return s_screen_impl->window.height();
 }
 
-class Window& Screen::get_window() {
-    return s_screen_impl->window;
+glm::ivec2 Screen::draw_size() {
+    return s_screen_impl->window.draw_size();
 }
 
 i32 Screen::draw_width() {
@@ -49,4 +53,8 @@ i32 Screen::draw_width() {
 
 i32 Screen::draw_height() {
     return s_screen_impl->window.draw_height();
+}
+
+class Window& Screen::get_window() {
+    return s_screen_impl->window;
 }
