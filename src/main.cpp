@@ -16,7 +16,6 @@
 #include <fstream>
 #include <memory>
 
-
 class Demo : public App {
 public:
     AppSetup on_setup() override {
@@ -32,7 +31,7 @@ public:
 
     void on_awake() override {
         model = Model::load_from_file_shared("./res/models/teapot.obj");
-        if(bgfx::getRendererType() != bgfx::RendererType::Direct3D11)
+        if (bgfx::getRendererType() != bgfx::RendererType::Direct3D11)
             printf("It may work as well, perhaps.");
 
         // todo: move to Shader class
@@ -148,10 +147,34 @@ public:
             }
         }
         ImGui::End();
+
+        // modal popup
+        if (ask_quit)
+            ImGui::OpenPopup("Quit?");
+
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        if (ImGui::BeginPopupModal("Quit?", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("Do you really want to quit?");
+            if (ImGui::Button("Yes")) {
+                do_quit  = true;
+                ask_quit = false;
+                request_quit();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("No")) {
+                do_quit  = false;
+                ask_quit = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
     }
 
     bool on_closing() override {
-        return true;
+        ask_quit = true;
+        return do_quit;
     }
 
     void on_quit() override {
@@ -160,8 +183,10 @@ public:
     }
 
 private:
+    bool ask_quit = false;
+    bool do_quit  = false;
     std::shared_ptr<Model> model;
-    bgfx::ProgramHandle program{bgfx::kInvalidHandle};
+    bgfx::ProgramHandle program{ bgfx::kInvalidHandle };
 };
 
 LAUNCH_APP(Demo)

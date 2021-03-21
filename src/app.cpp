@@ -12,7 +12,7 @@
 #define INIT_STATIC_MODULE_EX(name, ...)       \
     if (!(name::init(__VA_ARGS__))) {          \
         fprintf(stderr, #name " init failed"); \
-        return AppState::Destroy;                 \
+        return AppState::Destroy;              \
     }
 
 #define INIT_STATIC_MODULE(name) INIT_STATIC_MODULE_EX(name, )
@@ -90,7 +90,7 @@ AppState App::init() {
 }
 
 AppState App::running() {
-    if(quit) {
+    if (quit) {
         return AppState::Cleanup;
     }
 
@@ -108,10 +108,10 @@ AppState App::running() {
 
     Time::tick();
 
-    glm::ivec2 size = Screen::size();
+    glm::ivec2 size      = Screen::size();
     glm::ivec2 draw_size = Screen::draw_size();
-    float w_scale = float(draw_size.x) / size.x;
-    float h_scale = float(draw_size.y) / size.y;
+    float w_scale        = float(draw_size.x) / size.x;
+    float h_scale        = float(draw_size.y) / size.y;
 
     // update gui, just generate data for gui rendering
     // the actual rendering will be performed later
@@ -133,7 +133,8 @@ AppState App::running() {
 }
 
 AppState App::cleanup() {
-    return on_closing() ? AppState::Destroy : AppState::Running;
+    quit = on_closing();
+    return quit ? AppState::Destroy : AppState::Running;
 }
 
 AppState App::destroy() {
