@@ -1,10 +1,12 @@
 # common
 *.dll
+*.exe
 *.lib
 *.pdb
 imgui.ini
 .clang-format
 temp/
+
 
 # Visual Studio
 .vs/
@@ -21,6 +23,7 @@ x64/
 # CLion
 cmake-*/
 .idea
+
 
 # vscode
 .vscode/

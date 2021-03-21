@@ -82,6 +82,8 @@ AppState App::init() {
     INIT_STATIC_MODULE(Input)
 
     on_awake();
+
+    // todo: start should be put in running state
     on_start();
 
     return AppState::Running;
