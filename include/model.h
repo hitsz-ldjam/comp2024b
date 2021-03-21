@@ -8,7 +8,8 @@
 
 #include <string>
 #include <vector>
-
+#include <optional>
+#include <memory>
 
 struct Vertex {
     glm::vec3 position;
@@ -22,10 +23,15 @@ struct Vertex {
 // todo: load from asset manager
 class Model final {
 public:
-    Model(const std::string& filename);
+    Model() = default;
     Model(const Model&) = delete;
-    //Model(Model&&) = default;
+    Model& operator=(const Model&) = delete;
+    Model(Model&& other) noexcept ;
+    Model& operator=(Model&& other) noexcept ;
     ~Model();
+
+    static std::optional<Model> load_from_file(const std::string& filename);
+    static std::shared_ptr<Model> load_from_file_shared(const std::string& filename);
 
 private:
     std::vector<Vertex> vertices;
@@ -33,6 +39,6 @@ private:
 
     // todo: move to MeshRenderer component
 public:
-    bgfx::VertexBufferHandle vbh;
-    bgfx::IndexBufferHandle ibh;
+    bgfx::VertexBufferHandle vbh = BGFX_INVALID_HANDLE;
+    bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
 };

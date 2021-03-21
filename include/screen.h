@@ -8,6 +8,7 @@ public:
     static bool init(const AppSetup& setup);
     static void quit();
     static glm::ivec2 size();
+    static void set_size(i32 width, i32 height);
     static i32 width();
     static i32 height();
     static glm::ivec2 draw_size();

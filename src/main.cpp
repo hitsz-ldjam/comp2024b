@@ -22,16 +22,16 @@ public:
     AppSetup on_setup() override {
         // msvc does not support designated initializer
         AppSetup as;
-        as.title = "Demo";
+        as.title    = "Demo";
         as.centered = true;
-        as.width = 1280;
-        as.height = 720;
-        as.flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
+        as.width    = 1280;
+        as.height   = 720;
+        as.flags    = SDL_WINDOW_SHOWN;
         return as;
     }
 
     void on_awake() override {
-        model = std::make_shared<Model>("./res/models/teapot.obj");
+        model = Model::load_from_file_shared("./res/models/teapot.obj");
         if(bgfx::getRendererType() != bgfx::RendererType::Direct3D11)
             printf("It may work as well, perhaps.");
 
@@ -83,19 +83,32 @@ public:
     }
 
     void on_gui() override {
-        ImGui::ShowDemoWindow();
         ImGui::Begin("Test", nullptr, ImGuiWindowFlags_NoCollapse);
         {
-            if(ImGui::Button("Quit")){
+            if (ImGui::Button("Quit")) {
                 request_quit();
             }
 
             if (ImGui::CollapsingHeader("Screen")) {
                 ImGui::Text("window size: (%d, %d)", Screen::width(), Screen::height());
                 ImGui::Text("window drawable size: (%d, %d)", Screen::draw_width(), Screen::draw_height());
+                ImGui::Text("change window size");
+                static int resolve = 1;
+                static int last    = resolve;
+                ImGui::RadioButton("800x600", &resolve, 0);
+                ImGui::RadioButton("1280x720", &resolve, 1);
+                ImGui::RadioButton("1440x900", &resolve, 2);
+                if (last != resolve) {
+                    switch (resolve) {
+                    case 0: Screen::set_size(800, 600); break;
+                    case 1: Screen::set_size(1280, 720); break;
+                    case 2: Screen::set_size(1440, 960); break;
+                    }
+                    last = resolve;
+                }
             }
 
-            if(ImGui::CollapsingHeader("Gfx")) {
+            if (ImGui::CollapsingHeader("Gfx")) {
                 ImGui::Text("main view: %u", Gfx::main_view());
                 ImGui::Text("gui view: %u", Gfx::gui_view());
             }

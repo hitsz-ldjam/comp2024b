@@ -13,6 +13,7 @@ message(STATUS "third party include dir: ${THIRD_PARTY_INCLUDE_DIR}")
 message(STATUS "third party lib dir: ${THIRD_PARTY_LIB_DIR}")
 
 add_executable(main src/main.cpp)
+# vvv add new sources file here vvv
 target_sources(main
         PRIVATE
         src/app.cpp
@@ -21,14 +22,12 @@ target_sources(main
         src/input.cpp
         src/gfx.cpp
         src/window.cpp
-        src/screen.cpp)
+        src/screen.cpp
+        src/model.cpp)
 
 target_include_directories(main PRIVATE ${ROOT_DIR}/include)
 set_property(TARGET main PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 set_property(TARGET main PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${ROOT_DIR}")
-
-# target_sources(main PRIVATE "{..}")
-# add new sources file here ----^
 
 # third party libs
 target_include_directories(main PRIVATE ${THIRD_PARTY_INCLUDE_DIR})
@@ -55,6 +54,7 @@ set(THIRD_PARTY_LIB_NAMES
         bimg_decode
         bx
         imgui
+        tiny_obj_loader
         )
 
 foreach (lib ${THIRD_PARTY_LIB_NAMES})

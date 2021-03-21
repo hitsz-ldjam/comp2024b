@@ -35,6 +35,10 @@ glm::ivec2 Screen::size() {
     return s_screen_impl->window.size();
 }
 
+void Screen::set_size(i32 width, i32 height) {
+    s_screen_impl->window.set_size(width, height);
+}
+
 i32 Screen::width() {
     return s_screen_impl->window.width();
 }
