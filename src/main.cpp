@@ -16,6 +16,7 @@
 #include "core/model.h"
 
 #include "components/transform.h"
+#include "components/camera.h"
 
 #include <fstream>
 #include <memory>
@@ -55,50 +56,49 @@ public:
         auto frag_sh = load_shader("./res/shaders/fs_unlit.bin");
 
         program = bgfx::createProgram(vert_sh, frag_sh, true);
-
-        // add entities to scene
-        auto teapot    = scene.create();
-        auto& trans    = scene.emplace<Transform>(teapot);
-        trans.position = glm::vec3(0);
-        trans.rotation = glm::quat(1, 0, 0, 0);
-        trans.scale    = glm::vec3(1);
     }
 
     void on_start() override {
+        // add entities to scene
+        auto teapot    = scene.create();
+        scene.emplace<Transform>(teapot);
+
+        camera = scene.create();
+        scene.emplace<Camera>(camera, Camera::perspective(glm::radians(60.f), (float)Screen::width() / Screen::height(), .1f, 100.f));
+        scene.emplace<Transform>(camera, Transform::look_at(glm::vec3(0, 3, -5), glm::vec3(0, 0, 0)));
     }
 
     void on_update() override {
-        // todo: play with camera
-        const auto view = glm::lookAt(glm::vec3(0, 10, -20),
-                                      glm::vec3(0, 0, 0),
-                                      glm::vec3(0, 1, 0));
-        const auto proj = glm::perspective(glm::radians(60.f),
-                                           (float)Screen::draw_width() / Screen::height(),
-                                           .1f,
-                                           100.f);
-        bgfx::setViewTransform(Gfx::main_view(), glm::value_ptr(view), glm::value_ptr(proj));
-        bgfx::setViewRect(Gfx::main_view(), 0, 0, Screen::draw_width(), Screen::draw_height());
-
         // update scene
         // todo use systems
-        auto teapots = scene.view<Transform>();
+        auto teapots = scene.view<Transform>(entt::exclude<Camera>);
         teapots.each([](Transform& trans) {
             trans.rotation = glm::rotate(trans.rotation, Time::delta(), glm::vec3(0, 1, 0));
         });
     }
 
     void on_render() override {
-        auto teapots = scene.view<const Transform>();
+        // get camera info
+        glm::mat4 view = scene.get<Transform>(camera).view_matrix();
+        glm::mat4 proj   = scene.get<Camera>(camera).matrix();
+        bgfx::setViewTransform(Gfx::main_view(), glm::value_ptr(view), glm::value_ptr(proj));
+        bgfx::setViewRect(Gfx::main_view(), 0, 0, Screen::draw_width(), Screen::draw_height());
+
+        // render entities in scene
+        // todo only render entities with RenderComponent
+        auto teapots = scene.view<const Transform>(entt::exclude<Camera>);
         teapots.each([&](const Transform& trans) {
             auto mat = glm::mat4(1);
-            mat = glm::translate(mat, trans.position);
-            mat = mat * glm::toMat4(trans.rotation);
-            mat = glm::scale(mat, trans.scale);
+            mat      = glm::translate(mat, trans.position);
+            mat      = mat * glm::toMat4(trans.rotation);
+            mat      = glm::scale(mat, trans.scale);
             bgfx::setTransform(glm::value_ptr(mat));
 
             bgfx::setVertexBuffer(0, model->vbh);
             bgfx::setIndexBuffer(model->ibh);
-            bgfx::setState(BGFX_STATE_DEFAULT);
+            bgfx::setState(BGFX_STATE_WRITE_RGB
+                           | BGFX_STATE_WRITE_Z
+                           | BGFX_STATE_CULL_CCW);
             bgfx::submit(Gfx::main_view(), program);
         });
     }
@@ -212,6 +212,7 @@ private:
 
     // todo put these into base class
     entt::registry scene;
+    entt::entity camera;
 };
 
 LAUNCH_APP(Demo)

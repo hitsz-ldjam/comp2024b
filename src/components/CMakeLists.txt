@@ -2,7 +2,9 @@ add_library(components STATIC "")
 
 # vvv add new sources file here vvv
 target_sources(components
-        PUBLIC "transform.cpp"
+        PUBLIC
+        transform.cpp
+        camera.cpp
         )
 
 target_include_directories(components
