@@ -1,15 +1,29 @@
 #pragma once
 
-#include "types.h"
+#include "../types.h"
 
 #include <bgfx/bgfx.h>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 
 #include <string>
 #include <vector>
 #include <optional>
 #include <memory>
+
+
+// not a component
+// dirty code
+struct MeshDataTuple {
+    bgfx::VertexBufferHandle vbh;
+    bgfx::IndexBufferHandle ibh;
+    glm::vec4 diffuse;
+
+    glm::mat4 transform;
+};
+
 
 struct Vertex {
     glm::vec3 position;
@@ -41,4 +55,6 @@ private:
 public:
     bgfx::VertexBufferHandle vbh = BGFX_INVALID_HANDLE;
     bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
+
+    std::vector<MeshDataTuple> mdt;
 };
