@@ -10,7 +10,6 @@ target_sources(core
         gfx.cpp
         window.cpp
         screen.cpp
-        model.cpp
         )
 
 target_include_directories(core
@@ -19,3 +18,5 @@ target_include_directories(core
         )
 
 target_link_libraries(core PUBLIC $<IF:$<CONFIG:DEBUG>,${THIRD_PARTY_LIBS_DEBUG},${THIRD_PARTY_LIBS_RELEASE}>)
+
+add_subdirectory(graphic)

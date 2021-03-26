@@ -7,7 +7,7 @@
 
 // todo: add support for .obj
 //#include <tinyobjloader/tiny_obj_loader.h>
-#include <openfbx/ofbx.h>
+#include <OpenFBX/ofbx.h>
 
 bgfx::VertexLayout Vertex::get_layout() {
     bgfx::VertexLayout layout;
@@ -76,8 +76,7 @@ std::optional<Model> Model::load_from_file(const std::string& filename) {
 
     const auto fbx_scene = load_fbx_model(filename);
     if(!fbx_scene) {
-        //return std::nullopt;
-        throw std::runtime_error("failed to load");
+        return std::nullopt;
     }
 
     for(auto mesh_idx = 0; mesh_idx < fbx_scene->getMeshCount(); ++mesh_idx) {

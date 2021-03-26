@@ -29,6 +29,7 @@ set(THIRD_PARTY_LIB_NAMES
         bx
         imgui
         tiny_obj_loader
+        OpenFBX
         )
 foreach (lib ${THIRD_PARTY_LIB_NAMES})
     list(APPEND THIRD_PARTY_LIBS_DEBUG "${THIRD_PARTY_LIB_DIR}/debug/${lib}.lib")
