@@ -32,6 +32,8 @@ struct GuiImpl {
     bgfx::TextureHandle texture           = BGFX_INVALID_HANDLE;
     bgfx::VertexLayout vertex_layout      = bgfx::VertexLayout();
     ImFont* font                          = nullptr;
+    bool capture_mouse                    = true;
+    bool capture_keyboard                 = true;
     // todo add cursor support
 };
 
@@ -183,7 +185,7 @@ bool Gui::init() {
     // init shader
     {
         bgfx::RendererType::Enum type = bgfx::getRendererType();
-        s_gui_impl->shader              = bgfx::createProgram(
+        s_gui_impl->shader            = bgfx::createProgram(
             bgfx::createEmbeddedShader(EMBEDDED_SHADER, type, "vs_ocornut_imgui"),
             bgfx::createEmbeddedShader(EMBEDDED_SHADER, type, "fs_ocornut_imgui"),
             true);
@@ -217,8 +219,9 @@ bool Gui::init() {
 
         if (fs::exists(font_path)) {
             s_gui_impl->font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 16, &config, ranges);
-        } else {
-            s_gui_impl->font              = io.Fonts->AddFontDefault(&config);
+        }
+        else {
+            s_gui_impl->font = io.Fonts->AddFontDefault(&config);
         }
 
         uint8_t* data;
@@ -255,10 +258,14 @@ void Gui::quit() {
 
 bool Gui::process_event(const SDL_Event& event) {
     ImGuiIO& io = ImGui::GetIO();
-    bool is_mouse = false;
+
+    bool is_mouse    = false;
     bool is_keyboard = false;
     switch (event.type) {
     case SDL_MOUSEWHEEL:
+        if (!s_gui_impl->capture_mouse)
+            break;
+
         if (event.wheel.x > 0)
             io.MouseWheelH += 1;
         if (event.wheel.x < 0)
@@ -271,6 +278,9 @@ bool Gui::process_event(const SDL_Event& event) {
         break;
 
     case SDL_MOUSEBUTTONDOWN:
+        if (!s_gui_impl->capture_mouse)
+            break;
+
         switch (event.button.button) {
         case SDL_BUTTON_LEFT: io.MouseDown[0] = true; break;
         case SDL_BUTTON_MIDDLE: io.MouseDown[1] = true; break;
@@ -283,6 +293,9 @@ bool Gui::process_event(const SDL_Event& event) {
         break;
 
     case SDL_MOUSEBUTTONUP:
+        if (!s_gui_impl->capture_mouse)
+            break;
+
         switch (event.button.button) {
         case SDL_BUTTON_LEFT: io.MouseDown[0] = false; break;
         case SDL_BUTTON_MIDDLE: io.MouseDown[1] = false; break;
@@ -295,11 +308,20 @@ bool Gui::process_event(const SDL_Event& event) {
         break;
 
     case SDL_MOUSEMOTION:
+        if (!s_gui_impl->capture_mouse) {
+            // tell ImGui that mouse is currently not usable
+            io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+            break;
+        }
+
         io.MousePos = ImVec2(event.motion.x, event.motion.y);
-        is_mouse = true;
+        is_mouse    = true;
         break;
 
     case SDL_KEYDOWN:
+        if (!s_gui_impl->capture_keyboard)
+            break;
+
         io.KeysDown[event.key.keysym.scancode] = true;
         if (event.key.keysym.mod & KMOD_CTRL)
             io.KeyCtrl = true;
@@ -313,6 +335,9 @@ bool Gui::process_event(const SDL_Event& event) {
         break;
 
     case SDL_KEYUP:
+        if (!s_gui_impl->capture_keyboard)
+            break;
+
         io.KeysDown[event.key.keysym.scancode] = false;
         if (event.key.keysym.mod & KMOD_CTRL)
             io.KeyCtrl = false;
@@ -332,5 +357,22 @@ bool Gui::process_event(const SDL_Event& event) {
         break;
     }
 
-    return (is_mouse && io.WantCaptureMouse) || (is_keyboard && io.WantCaptureKeyboard);
+    return (is_mouse && io.WantCaptureMouse && s_gui_impl->capture_mouse)
+           || (is_keyboard && io.WantCaptureKeyboard && s_gui_impl->capture_keyboard);
+}
+
+void Gui::set_capture_mouse(bool v) {
+    s_gui_impl->capture_mouse = v;
+}
+
+void Gui::set_capture_keyboard(bool v) {
+    s_gui_impl->capture_keyboard = v;
+}
+
+bool Gui::want_capture_mouse() {
+    return ImGui::GetIO().WantCaptureMouse;
+}
+
+bool Gui::want_capture_keyboard() {
+    return ImGui::GetIO().WantCaptureKeyboard;
 }

@@ -12,10 +12,10 @@ static ScreenImpl* s_screen_impl = nullptr;
 
 bool Screen::init(const AppSetup& setup) {
     assert(s_screen_impl == nullptr && "screen is initialized twice");
-    s_screen_impl         = new ScreenImpl();
+    s_screen_impl = new ScreenImpl();
 
-    int x                 = setup.centered ? (int)SDL_WINDOWPOS_CENTERED : setup.x;
-    int y                 = setup.centered ? (int)SDL_WINDOWPOS_CENTERED : setup.y;
+    int x = setup.centered ? (int)SDL_WINDOWPOS_CENTERED : setup.x;
+    int y = setup.centered ? (int)SDL_WINDOWPOS_CENTERED : setup.y;
 
     s_screen_impl->window = Window(setup.title.c_str(),
                                    x,
@@ -61,4 +61,20 @@ i32 Screen::draw_height() {
 
 class Window& Screen::get_window() {
     return s_screen_impl->window;
+}
+
+void Screen::show_cursor(bool v) {
+    SDL_ShowCursor(v);
+}
+
+bool Screen::cursor_shown() {
+    return SDL_ShowCursor(-1);
+}
+
+void Screen::set_relative_cursor(bool v) {
+    SDL_SetRelativeMouseMode(v ? SDL_TRUE : SDL_FALSE);
+}
+
+bool Screen::relative_cursor() {
+    return SDL_GetRelativeMouseMode();
 }

@@ -14,5 +14,9 @@ public:
     static glm::ivec2 draw_size();
     static i32 draw_width();
     static i32 draw_height();
+    static void show_cursor(bool v);
+    static bool cursor_shown();
+    static void set_relative_cursor(bool v);
+    static bool relative_cursor();
     static class Window& get_window();
 };
