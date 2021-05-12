@@ -2,7 +2,9 @@ add_library(systems STATIC "")
 
 # vvv add new sources file here vvv
 target_sources(systems
-        ""
+        PUBLIC
+        camera_control.cpp
+        rendering.cpp
         )
 
 target_include_directories(systems

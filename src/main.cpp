@@ -20,6 +20,11 @@
 
 #include "components/transform.h"
 #include "components/camera.h"
+#include "components/camera_control_data.h"
+#include "components/render.h"
+
+#include "systems/camera_control.h"
+#include "systems/rendering.h"
 
 #include <fstream>
 #include <memory>
@@ -27,7 +32,6 @@
 class Demo : public App {
 public:
     AppSetup on_setup() override {
-        // msvc does not support designated initializer
         AppSetup as;
         as.title    = "Demo";
         as.centered = true;
@@ -38,54 +42,32 @@ public:
     }
 
     void on_awake() override {
-        model = Model::load_from_file_shared("./res/models/A_full.fbx");
-        printf("size %lld\n", model->mdt.size());
+        model           = Model::load_from_file_shared("./res/models/A_full.fbx");
         u_diffuse_color = bgfx::createUniform("u_diffuse_color", bgfx::UniformType::Vec4);
-
-        program = std::make_shared<Shader>("./res/shaders/vs_unlit.bin", "./res/shaders/fs_unlit.bin");
+        program         = std::make_shared<Shader>("./res/shaders/vs_unlit.bin", "./res/shaders/fs_unlit.bin");
     }
 
     void on_start() override {
         // add entities to scene
         auto teapot = scene.create();
         scene.emplace<Transform>(teapot);
+        auto& render_comp = scene.emplace<RenderComponent>(teapot, RenderComponent(model, program));
+        render_comp.uniform = u_diffuse_color;
 
         camera = scene.create();
         scene.emplace<Camera>(camera, Camera::perspective(glm::radians(60.f), (float)Screen::width() / Screen::height(), .1f, 300.f));
         scene.emplace<Transform>(camera, Transform::look_at(glm::vec3(-15, 15, -20), glm::vec3(0, 0, 0)));
-
-        walk_speed   = 20.0f;
-        rotate_speed = 30.0f;
+        scene.emplace<CameraControlData>(camera, CameraControlData{ 20.0f, 30.0f });
     }
 
     void on_update() override {
-        process_scene_input();
+        if (!process_scene_input())
+            return;
+        Systems::camera_control(scene);
     }
 
     void on_render() override {
-        // get camera info
-        glm::mat4 view = scene.get<Transform>(camera).view_matrix();
-        glm::mat4 proj = scene.get<Camera>(camera).matrix();
-        bgfx::setViewTransform(Gfx::main_view(), glm::value_ptr(view), glm::value_ptr(proj));
-        bgfx::setViewRect(Gfx::main_view(), 0, 0, Screen::draw_width(), Screen::draw_height());
-
-        // render entities in scene
-        // todo only render entities with RenderComponent
-        auto teapots = scene.view<const Transform>(entt::exclude<Camera>);
-        teapots.each([&](const Transform& trans) {
-            // ...
-        });
-
-        for (const auto& mdt : model->mdt) {
-            bgfx::setTransform(glm::value_ptr(mdt.transform));
-            bgfx::setVertexBuffer(0, mdt.vbh);
-            bgfx::setIndexBuffer(mdt.ibh);
-            bgfx::setUniform(u_diffuse_color, glm::value_ptr(mdt.diffuse));
-            bgfx::setState(BGFX_STATE_WRITE_RGB
-                           | BGFX_STATE_WRITE_Z
-                           | BGFX_STATE_DEPTH_TEST_LESS); // don't cull since model is corrupt
-            bgfx::submit(Gfx::main_view(), program->handle());
-        }
+        Systems::rendering(scene);
     }
 
     void on_gui() override {
@@ -113,6 +95,8 @@ public:
     }
 
     void on_quit() override {
+        scene.clear();
+
         program.reset();
         bgfx::destroy(u_diffuse_color);
         model.reset();
@@ -143,15 +127,19 @@ private:
             ImGui::RadioButton("1280x720", &resolve, 1);
             ImGui::RadioButton("1440x900", &resolve, 2);
             if (last != resolve) {
+                Camera& c = scene.get<Camera>(camera);
                 switch (resolve) {
                 case 0:
                     Screen::set_size(800, 600);
+                    c.set_aspect(800.0f / 600.0f);
                     break;
                 case 1:
                     Screen::set_size(1280, 720);
+                    c.set_aspect(1280.0f / 720.0f);
                     break;
                 case 2:
                     Screen::set_size(1440, 960);
+                    c.set_aspect(1440.0f / 960.0f);
                     break;
                 }
                 last = resolve;
@@ -198,7 +186,7 @@ private:
         }
     }
 
-    void process_scene_input() {
+    bool process_scene_input() {
         // use left ALT to switch between scene and gui
         if (Input::key_pressed(KeyCode::LAlt)) {
             gui_capture_input = !gui_capture_input;
@@ -209,51 +197,16 @@ private:
 
         if (Input::key_pressed(KeyCode::Escape)) {
             request_quit();
-            return;
+            return false;
         }
 
         if (gui_capture_input)
-            return;
+            return false;
 
-        // update camera
-        Transform& trans = scene.get<Transform>(camera);
-        glm::vec3 dir    = glm::zero<glm::vec3>();
-        if (Input::key_repeat(KeyCode::W)) {
-            dir += Transform::FORWARD;
-        }
-        if (Input::key_repeat(KeyCode::S)) {
-            dir += Transform::BACK;
-        }
-        if (Input::key_repeat(KeyCode::A)) {
-            dir += Transform::LEFT;
-        }
-        if (Input::key_repeat(KeyCode::D)) {
-            dir += Transform::RIGHT;
-        }
-        if (Input::key_repeat(KeyCode::E)) {
-            dir += Transform::UP;
-        }
-        if (Input::key_repeat(KeyCode::Q)) {
-            dir += Transform::DOWN;
-        }
-
-        if (!glm::all(glm::epsilonEqual(dir, glm::zero<glm::vec3>(), 0.0001f))) {
-            dir = glm::normalize(dir);
-            trans.translate_in_local(dir * Time::delta() * walk_speed);
-        }
-
-        glm::ivec2 mouse = Input::mouse_pos_delta();
-        if (mouse.x != 0 || mouse.y != 0) {
-            glm::quat rotation = glm::identity<glm::quat>();
-            rotation           = glm::rotate(rotation, glm::radians(mouse.x * Time::delta() * rotate_speed), Transform::UP);
-            rotation           = glm::rotate(rotation, glm::radians(mouse.y * Time::delta() * rotate_speed), trans.right());
-            trans.rotate(rotation);
-        }
+        return true;
     }
 
     bool gui_capture_input = true;
-    float walk_speed       = 1.0f;
-    float rotate_speed     = 1.0f;
     std::shared_ptr<Model> model;
     std::shared_ptr<Shader> program;
     bgfx::UniformHandle u_diffuse_color = BGFX_INVALID_HANDLE;

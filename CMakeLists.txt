@@ -50,11 +50,11 @@ set_property(TARGET main PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${APP_ROOT_DIR}
 
 add_subdirectory(src/core)
 add_subdirectory(src/components)
-# add_subdirectory(src/systems)
+add_subdirectory(src/systems)
 
 target_link_libraries(main core)
 target_link_libraries(main components)
-# target_link_libraries(main systems)
+target_link_libraries(main systems)
 
 # add third_party/bins to environment path or uncomment the following lines
 # copy SDL2.dll to root directory
