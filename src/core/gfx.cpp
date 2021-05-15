@@ -7,6 +7,7 @@
 enum ViewId : u16 {
     VID_Main = 0,
     // maybe more than one scene view
+    VID_PE = 31,
     VID_GUI = 32
 };
 
@@ -68,6 +69,10 @@ void Gfx::quit() {
 
 u16 Gfx::main_view() {
     return VID_Main;
+}
+
+u16 Gfx::pe_view() {
+    return VID_PE;
 }
 
 u16 Gfx::gui_view() {
