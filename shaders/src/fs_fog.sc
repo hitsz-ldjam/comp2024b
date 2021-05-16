@@ -2,11 +2,16 @@
 #include <bgfx_shader.sh>
 
 SAMPLER2D(s_depth, 0);
-uniform vec4 u_params[4];
+SAMPLER3D(s_noise, 1);
+uniform vec4 u_params[8];
 
 #define u_camera_pos u_params[0].xyz
+#define u_noise_scale u_params[0].w // vec4 0
 #define u_box_min u_params[1].xyz
-#define u_box_max u_params[2].xyz
+#define u_density u_params[1].w // vec4 1
+#define u_box_max u_params[2].xyz // vec4 2
+#define u_color_min u_params[3] // vec4 3
+#define u_color_max u_params[4] // vec4 4
 
 vec3 to_screen_space(vec4 frag_coord) {
     return vec3(frag_coord.xy / u_viewRect.zw, frag_coord.z);
@@ -90,15 +95,18 @@ bool ray_box_intersect(vec3 start, vec3 dir, vec3 b_min, vec3 b_max, out float t
     return tmax >= tmin;
 }
 
-float sample_fog(vec3 current_pos, vec3 backgroud_pos, vec3 camera_pos) {
+float sample_fog(vec3 current_pos, vec3 backgroud_pos, vec3 camera_pos, vec3 box_extent) {
+    const int max_steps = 100;
+    const float step_size = 0.25f;
+
     vec3 view_dir = normalize(current_pos - camera_pos);
     float max_dist = distance(camera_pos, backgroud_pos);
-    vec3 step_size = view_dir * 0.25f;
+    vec3 vsize = view_dir * step_size;
 
-    vec3 curr_pos = camera_pos - step_size * random3(current_pos).x;
+    vec3 curr_pos = camera_pos - vsize * random3(current_pos).x;
     float density = 0;
-    for (int i = 0; i < 100; ++i) {
-        curr_pos += step_size;
+    for (int i = 0; i < max_steps; ++i) {
+        curr_pos += vsize;
 
         if(distance(camera_pos, curr_pos) > max_dist)
             break;
@@ -107,8 +115,8 @@ float sample_fog(vec3 current_pos, vec3 backgroud_pos, vec3 camera_pos) {
             continue;
 
         // sample density here
-
-        density += 0.01;
+        float sample = texture3D(s_noise, (curr_pos - u_box_min) / box_extent * u_noise_scale).x;
+        density += sample * u_density;
     }
 
     return density;
@@ -122,8 +130,8 @@ void main() {
     screen_space.z = scene_depth;
     vec3 backgroud_pos = screen_to_world_space(screen_space);
 
-    vec3 fog_color = vec3(1, 1, 1);
-    float density = sample_fog(current_pos, backgroud_pos, u_camera_pos);
-
-    gl_FragColor = vec4(fog_color, density);
+    vec3 box_extent = u_box_max - u_box_min;
+    float density = sample_fog(current_pos, backgroud_pos, u_camera_pos, box_extent);
+    vec4 color = mix(u_color_min, u_color_max, density);
+    gl_FragColor = vec4(color.xyz, density);
 }

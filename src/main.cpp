@@ -71,6 +71,23 @@ private:
     std::shared_ptr<Shader> shader;
 };
 
+union FogParameters {
+    struct {
+        glm::vec4 _[8];
+    };
+
+    struct {
+        glm::vec3 camera_pos;
+        float noise_scale;
+        glm::vec3 box_min;
+        float density;
+        glm::vec3 box_max;
+        float _pad1;
+        glm::vec4 color_min;
+        glm::vec4 color_max;
+    };
+};
+
 class Demo : public App {
 public:
     AppSetup on_setup() override {
@@ -123,6 +140,23 @@ public:
         pe_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 4);
         pe_shader = std::make_shared<Shader>("./res/shaders/vs_fog.bin", "./res/shaders/fs_fog.bin");
 
+        using std::ios_base;
+        std::ifstream in_file("./res/textures/Perlin_Noise.raw", ios_base::binary | ios_base::ate);
+        auto size = in_file.tellg();
+        in_file.seekg(0, ios_base::beg);
+        const bgfx::Memory* mem = bgfx::alloc(size);
+        in_file.read((char*)mem->data, mem->size);
+        in_file.close();
+        pe_noise_tex = bgfx::createTexture3D(256, 256, 256, false, bgfx::TextureFormat::R8, 0, mem);
+        pe_noise     = bgfx::createUniform("s_noise", bgfx::UniformType::Sampler);
+
+        fog_params.noise_scale = 1.0f;
+        fog_params.density     = 0.5f;
+        fog_params.color_min   = glm::vec4(0, 0, 0, 0);
+        fog_params.color_max   = glm::vec4(1, 1, 1, 1);
+        fog_params.box_min     = glm::vec3(-10, -10, -10);
+        fog_params.box_max     = glm::vec3(10, 10, 10);
+
         blit.init();
     }
 
@@ -136,7 +170,7 @@ public:
         camera_entity = scene.create();
         scene.emplace<Camera>(camera_entity, Camera::perspective(glm::radians(60.f), (float)Screen::width() / Screen::height(), .1f, 300.f));
         scene.emplace<Transform>(camera_entity, Transform::look_at(glm::vec3(-15, 15, -20), glm::vec3(0, 0, 0)));
-        scene.emplace<CameraControlData>(camera_entity, CameraControlData{ 20.0f, 30.0f });
+        scene.emplace<CameraControlData>(camera_entity, CameraControlData{ 10.0f, 30.0f });
     }
 
     void on_update() override {
@@ -166,12 +200,10 @@ public:
         bgfx::setViewClear(Gfx::pe_view(), BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0);
 
         bgfx::setTexture(0, pe_depth, scene_depth);
+        bgfx::setTexture(1, pe_noise, pe_noise_tex);
 
-        glm::vec4 params[4]; // pass parameters to shader, see fs_fog.sc file
-        params[0] = glm::vec4(trans.position, 0);
-        params[1] = glm::vec4(-10, -10, -10, 0);
-        params[2] = glm::vec4(10, 10, 10, 0);
-        bgfx::setUniform(pe_params, params, std::size(params));
+        fog_params.camera_pos = glm::vec3(trans.position);
+        bgfx::setUniform(pe_params, &fog_params, UINT16_MAX);
 
         // draw screen quad
         bgfx::setVertexCount(3);
@@ -189,6 +221,11 @@ public:
         ImGui::Begin("Test", nullptr, ImGuiWindowFlags_NoCollapse);
         {
             if (ImGui::BeginTabBar("menu")) {
+                if (ImGui::BeginTabItem("Control")) {
+                    gui_control_tab();
+                    ImGui::EndTabItem();
+                }
+
                 if (ImGui::BeginTabItem("Help")) {
                     gui_help_tab();
                     ImGui::EndTabItem();
@@ -215,6 +252,8 @@ public:
         pe_shader.reset();
         bgfx::destroy(pe_depth);
         bgfx::destroy(pe_params);
+        bgfx::destroy(pe_noise);
+        bgfx::destroy(pe_noise_tex);
 
         blit.destroy();
 
@@ -225,6 +264,32 @@ public:
     }
 
 private:
+    void gui_control_tab() {
+        if (ImGui::CollapsingHeader("Camera")) {
+            CameraControlData& control = scene.get<CameraControlData>(camera_entity);
+            ImGui::SliderFloat("Speed", &control.walk_speed, 0.0f, 30.0f);
+        }
+
+        if (ImGui::CollapsingHeader("Fog")) {
+            ImGui::SliderFloat("Scale", &fog_params.noise_scale, 0.0f, 1.0f);
+            static float density = fog_params.density;
+            ImGui::SliderFloat("Density", &density, 0.0f, 1.0f);
+            fog_params.density = density / 10.0f;
+
+            ImGuiColorEditFlags flags = ImGuiColorEditFlags_InputRGB
+                                        | ImGuiColorEditFlags_PickerHueWheel
+                                        | ImGuiColorEditFlags_AlphaBar
+                                        | ImGuiColorEditFlags_AlphaPreviewHalf
+                                        | ImGuiColorEditFlags_Float;
+            ImGui::ColorEdit4("Color min",
+                              glm::value_ptr(fog_params.color_min),
+                              flags);
+            ImGui::ColorEdit4("Color max",
+                              glm::value_ptr(fog_params.color_max),
+                              flags);
+        }
+    }
+
     void gui_help_tab() {
         ImGui::Text("Press left ALT to switch between scene and ui");
         ImGui::NewLine();
@@ -335,10 +400,14 @@ private:
 
     Blit blit;
 
+    FogParameters fog_params;
     bgfx::FrameBufferHandle main_fb;
     bgfx::UniformHandle pe_depth;
+    bgfx::UniformHandle pe_noise;
     bgfx::UniformHandle pe_params;
     std::shared_ptr<Shader> pe_shader;
+
+    bgfx::TextureHandle pe_noise_tex;
 
     // todo put these into base class
     entt::registry scene;
