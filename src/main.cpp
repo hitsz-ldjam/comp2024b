@@ -29,25 +29,46 @@
 #include <fstream>
 #include <memory>
 
-struct ScreenQuadVertex {
-    glm::vec3 pos;
-    glm::vec2 uv;
+class Blit {
+public:
+    Blit() = default;
 
-    static const bgfx::VertexLayout& layout() {
-        static bgfx::VertexLayout s_layout;
-        static bool flag = true;
-
-        if (flag) {
-            s_layout.begin()
-                .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-                .end();
-
-            flag = false;
-        }
-
-        return s_layout;
+    ~Blit() {
+        destroy();
     }
+
+    void init() {
+        shader = std::make_shared<Shader>("./res/shaders/vs_blit.bin", "./res/shaders/fs_blit.bin");
+        color  = bgfx::createUniform("s_color", bgfx::UniformType::Sampler);
+    }
+
+    void destroy() {
+        shader.reset();
+        if (bgfx::isValid(color)) {
+            bgfx::destroy(color);
+            color = BGFX_INVALID_HANDLE;
+        }
+    }
+
+    void blit(bgfx::ViewId view, bgfx::TextureHandle src, u16 x, u16 y, u16 width, u16 height) {
+        bgfx::setViewRect(view, x, y, width, height);
+        bgfx::setViewClear(view, 0, 0);
+
+        bgfx::setTexture(0, color, src);
+
+        // draw screen quad
+        bgfx::setVertexCount(3);
+        bgfx::setState(BGFX_STATE_WRITE_RGB
+                           | BGFX_STATE_DEPTH_TEST_ALWAYS
+                           | BGFX_STATE_CULL_CW
+                           | BGFX_STATE_BLEND_ALPHA,
+                       0);
+        bgfx::submit(view, shader->handle());
+    }
+
+private:
+    bgfx::UniformHandle color;
+    std::shared_ptr<Shader> shader;
 };
 
 class Demo : public App {
@@ -98,10 +119,11 @@ public:
 
         main_fb = bgfx::createFrameBuffer(std::size(attach), attach, true);
 
-        pe_color  = bgfx::createUniform("s_color", bgfx::UniformType::Sampler);
         pe_depth  = bgfx::createUniform("s_depth", bgfx::UniformType::Sampler);
         pe_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 4);
         pe_shader = std::make_shared<Shader>("./res/shaders/vs_fog.bin", "./res/shaders/fs_fog.bin");
+
+        blit.init();
     }
 
     void on_start() override {
@@ -130,6 +152,9 @@ public:
         auto scene_color = bgfx::getTexture(main_fb, 0);
         auto scene_depth = bgfx::getTexture(main_fb, 1);
 
+        bgfx::setViewMode(Gfx::pe_view(), bgfx::ViewMode::Sequential);
+        blit.blit(Gfx::pe_view(), scene_color, 0, 0, Screen::draw_width(), Screen::draw_height());
+
         // volumetric fog rendering
         Transform& trans = scene.get<Transform>(camera_entity);
         Camera& camera   = scene.get<Camera>(camera_entity);
@@ -139,6 +164,8 @@ public:
         bgfx::setViewTransform(Gfx::pe_view(), glm::value_ptr(view), glm::value_ptr(proj));
         bgfx::setViewRect(Gfx::pe_view(), 0, 0, Screen::draw_width(), Screen::draw_height());
         bgfx::setViewClear(Gfx::pe_view(), BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0);
+
+        bgfx::setTexture(0, pe_depth, scene_depth);
 
         glm::vec4 params[4]; // pass parameters to shader, see fs_fog.sc file
         params[0] = glm::vec4(trans.position, 0);
@@ -153,8 +180,8 @@ public:
                            | BGFX_STATE_CULL_CW
                            | BGFX_STATE_BLEND_ALPHA,
                        0);
-        bgfx::setTexture(0, pe_color, scene_color);
-        bgfx::setTexture(1, pe_depth, scene_depth);
+        // bgfx::setTexture(0, pe_color, scene_color);
+        // bgfx::setTexture(1, pe_depth, scene_depth);
         bgfx::submit(Gfx::pe_view(), pe_shader->handle());
     }
 
@@ -186,9 +213,10 @@ public:
         scene.clear();
 
         pe_shader.reset();
-        bgfx::destroy(pe_color);
         bgfx::destroy(pe_depth);
         bgfx::destroy(pe_params);
+
+        blit.destroy();
 
         program.reset();
         bgfx::destroy(u_diffuse_color);
@@ -305,8 +333,9 @@ private:
     std::shared_ptr<Shader> program;
     bgfx::UniformHandle u_diffuse_color = BGFX_INVALID_HANDLE;
 
+    Blit blit;
+
     bgfx::FrameBufferHandle main_fb;
-    bgfx::UniformHandle pe_color;
     bgfx::UniformHandle pe_depth;
     bgfx::UniformHandle pe_params;
     std::shared_ptr<Shader> pe_shader;
