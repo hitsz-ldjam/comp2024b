@@ -102,8 +102,12 @@ public:
 
     void on_awake() override {
         model           = Model::load_from_file_shared("./res/models/A_full.fbx");
+        program         = std::make_shared<Shader>("./res/shaders/vs_blinn_phong.bin", "./res/shaders/fs_blinn_phong.bin");
         u_diffuse_color = bgfx::createUniform("u_diffuse_color", bgfx::UniformType::Vec4);
-        program         = std::make_shared<Shader>("./res/shaders/vs_unlit.bin", "./res/shaders/fs_unlit.bin");
+        u_ambient_light = bgfx::createUniform("u_ambient_light", bgfx::UniformType::Vec4);
+        u_dir_light_dir = bgfx::createUniform("u_dir_light_dir", bgfx::UniformType::Vec4);
+        u_dir_light_color = bgfx::createUniform("u_dir_light_color", bgfx::UniformType::Vec4);
+        u_camera_pos = bgfx::createUniform("u_camera_pos", bgfx::UniformType::Vec4);
 
         const uint64_t sampler_flags = 0
                                        | BGFX_SAMPLER_MIN_POINT
@@ -180,7 +184,17 @@ public:
     }
 
     void on_render() override {
+        Transform& trans = scene.get<Transform>(camera_entity);
+
         bgfx::setViewFrameBuffer(Gfx::main_view(), main_fb);
+        glm::vec4 ambient_light(.1, .1, .1, 0);
+        bgfx::setUniform(u_ambient_light, glm::value_ptr(ambient_light));
+        glm::vec4 dir_light_dir(-15, 15, -20, 0);
+        bgfx::setUniform(u_dir_light_dir, glm::value_ptr(dir_light_dir));
+        glm::vec4 dir_light_color(1, 1, 1, 0);
+        bgfx::setUniform(u_dir_light_color, glm::value_ptr(dir_light_color));
+        glm::vec4 camera_pos(trans.position, 0);
+        bgfx::setUniform(u_camera_pos, glm::value_ptr(camera_pos));
         Systems::rendering(scene);
 
         auto scene_color = bgfx::getTexture(main_fb, 0);
@@ -190,7 +204,6 @@ public:
         blit.blit(Gfx::pe_view(), scene_color, 0, 0, Screen::draw_width(), Screen::draw_height());
 
         // volumetric fog rendering
-        Transform& trans = scene.get<Transform>(camera_entity);
         Camera& camera   = scene.get<Camera>(camera_entity);
         glm::mat4 view   = trans.view_matrix();
         glm::mat4 proj   = camera.matrix();
@@ -259,6 +272,10 @@ public:
 
         program.reset();
         bgfx::destroy(u_diffuse_color);
+        bgfx::destroy(u_ambient_light);
+        bgfx::destroy(u_dir_light_dir);
+        bgfx::destroy(u_dir_light_color);
+        bgfx::destroy(u_camera_pos);
         bgfx::destroy(main_fb);
         model.reset();
     }
@@ -396,7 +413,12 @@ private:
     bool gui_capture_input = true;
     std::shared_ptr<Model> model;
     std::shared_ptr<Shader> program;
+    // todo: move these else where
     bgfx::UniformHandle u_diffuse_color = BGFX_INVALID_HANDLE;
+    bgfx::UniformHandle u_ambient_light = BGFX_INVALID_HANDLE;
+    bgfx::UniformHandle u_dir_light_dir = BGFX_INVALID_HANDLE;
+    bgfx::UniformHandle u_dir_light_color = BGFX_INVALID_HANDLE;
+    bgfx::UniformHandle u_camera_pos = BGFX_INVALID_HANDLE;
 
     Blit blit;
 

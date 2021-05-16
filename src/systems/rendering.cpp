@@ -31,7 +31,11 @@ namespace Systems {
                     bgfx::setTransform(glm::value_ptr(mdt.transform));
                     bgfx::setVertexBuffer(0, mdt.vbh);
                     bgfx::setIndexBuffer(mdt.ibh);
-                    bgfx::setUniform(render.uniform, glm::value_ptr(mdt.diffuse));
+                    // todo: move to material
+                    const float gloss = 32;
+                    glm::vec4 diffuse = mdt.diffuse;
+                    diffuse.a = gloss;
+                    bgfx::setUniform(render.uniform, glm::value_ptr(diffuse));
                     bgfx::setState(BGFX_STATE_WRITE_RGB
                                    | BGFX_STATE_WRITE_Z
                                    | BGFX_STATE_DEPTH_TEST_LESS); // don't cull since model is corrupt
