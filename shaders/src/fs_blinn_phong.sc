@@ -3,14 +3,16 @@ $input v_position, v_normal, v_texcoord0
 #include <bgfx_shader.sh>
 
 // SAMPLER2D(s_tex_diffuse, 0);
-uniform vec4 u_diffuse_color;  // a channel is gloss/shininess
+uniform vec4 u_diffuse_color; // a channel is gloss/shininess
 
-uniform vec3 u_ambient_light;
+uniform vec4 u_light_params[8];  // a channel is gloss/shininess
 
-uniform vec3 u_dir_light_dir;  // world direction point to light
-uniform vec3 u_dir_light_color;
+#define u_ambient_light u_light_params[0].xyz
 
-uniform vec3 u_camera_pos;
+#define u_dir_light_dir u_light_params[1].xyz  // world direction point to light
+#define u_dir_light_color u_light_params[2].xyz
+
+#define u_camera_pos u_light_params[3].xyz
 
 void main() {
     // vec3 albedo = texture2D(s_tex_diffuse, v_texcoord0).rgb;

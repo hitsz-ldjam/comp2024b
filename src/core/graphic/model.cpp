@@ -89,6 +89,21 @@ std::optional<Model> Model::load_from_file(const std::string& filename) {
         std::vector<Vertex> vertices;
         std::vector<u16> indices;
 
+        auto matrix = mesh->getGlobalTransform();
+        glm::mat4 trans;
+
+        //for(auto row = 0; row < 4; ++row)
+        //    for(auto col = 0; col < 4; ++col)
+        //        trans[col][row] = matrix.m[row+col*4];
+
+        for(auto i = 0; i < 16; ++i)
+            trans[i / 4][i % 4] = matrix.m[i];
+
+        // pre-multiplying model matrix
+        // init scale = 100, don't know why
+        trans *= .01;
+        trans[3][3] = 1;
+
         // for now, VertexCount == IndexCount because of default triangulation
         for(auto face_idx = 0; face_idx < geometry->getIndexCount(); ++face_idx) {
             const auto vert_idx = [=]() {
@@ -96,10 +111,11 @@ std::optional<Model> Model::load_from_file(const std::string& filename) {
                 return idx < 0 ? -idx - 1 : idx;
             }();
 
-            auto position = glm::vec3{
+            glm::vec3 position = trans * glm::vec4{
                 geometry->getVertices()[vert_idx].x,
                 geometry->getVertices()[vert_idx].y,
                 geometry->getVertices()[vert_idx].z,
+                1.0f
             };
 
             if(aabb_hasvalue.second) {
@@ -154,22 +170,8 @@ std::optional<Model> Model::load_from_file(const std::string& filename) {
             diffuse = {color.r, color.g, color.b, 1};
         }
 
-        auto matrix = mesh->getGlobalTransform();
-        glm::mat4 trans;
-
-        //for(auto row = 0; row < 4; ++row) 
-        //    for(auto col = 0; col < 4; ++col)
-        //        trans[col][row] = matrix.m[row+col*4];
-
-        for(auto i = 0; i < 16; ++i)
-            trans[i / 4][i % 4] = matrix.m[i];
-
-        // todo: consider pre-multiplying model matrix
-        // init scale = 100, don't know why
-        trans *= .01;
-        trans[3][3] = 1;
-
-        mdt.emplace_back(MeshDataTuple{vbh, ibh, diffuse, trans});
+        // todo remove transform field from MeshDataTuple
+        mdt.emplace_back(MeshDataTuple{vbh, ibh, diffuse, glm::mat4(1.0f)});
     }
 
     Model result;

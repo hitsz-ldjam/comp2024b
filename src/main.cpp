@@ -71,21 +71,28 @@ private:
     std::shared_ptr<Shader> shader;
 };
 
-union FogParameters {
-    struct {
-        glm::vec4 _[8];
-    };
+struct FogParameters {
+    glm::vec3 camera_pos;
+    float noise_scale;
+    glm::vec3 box_min;
+    float density;
+    glm::vec3 box_max;
+    float _pad1;
+    glm::vec4 color_min;
+    glm::vec4 color_max;
+    glm::vec4 _[3];
+};
 
-    struct {
-        glm::vec3 camera_pos;
-        float noise_scale;
-        glm::vec3 box_min;
-        float density;
-        glm::vec3 box_max;
-        float _pad1;
-        glm::vec4 color_min;
-        glm::vec4 color_max;
-    };
+struct LightParameters {
+    glm::vec3 u_ambient_light;
+    float _pad0;
+    glm::vec3 u_dir_light_dir; // world direction point to light
+    float _pad1;
+    glm::vec3 u_dir_light_color;
+    float _pad2;
+    glm::vec3 u_camera_pos;
+    float _pad3;
+    glm::vec4 _[4];
 };
 
 class Demo : public App {
@@ -108,11 +115,8 @@ public:
             model->aabb.max.x, model->aabb.max.y, model->aabb.max.z
         );
         program         = std::make_shared<Shader>("./res/shaders/vs_blinn_phong.bin", "./res/shaders/fs_blinn_phong.bin");
+        u_light_params  = bgfx::createUniform("u_light_params", bgfx::UniformType::Vec4, sizeof(LightParameters) / sizeof(glm::vec4));
         u_diffuse_color = bgfx::createUniform("u_diffuse_color", bgfx::UniformType::Vec4);
-        u_ambient_light = bgfx::createUniform("u_ambient_light", bgfx::UniformType::Vec4);
-        u_dir_light_dir = bgfx::createUniform("u_dir_light_dir", bgfx::UniformType::Vec4);
-        u_dir_light_color = bgfx::createUniform("u_dir_light_color", bgfx::UniformType::Vec4);
-        u_camera_pos = bgfx::createUniform("u_camera_pos", bgfx::UniformType::Vec4);
 
         const uint64_t sampler_flags = 0
                                        | BGFX_SAMPLER_MIN_POINT
@@ -146,7 +150,7 @@ public:
         main_fb = bgfx::createFrameBuffer(std::size(attach), attach, true);
 
         pe_depth  = bgfx::createUniform("s_depth", bgfx::UniformType::Sampler);
-        pe_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 4);
+        pe_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, sizeof(FogParameters) / sizeof(glm::vec4));
         pe_shader = std::make_shared<Shader>("./res/shaders/vs_fog.bin", "./res/shaders/fs_fog.bin");
 
         using std::ios_base;
@@ -160,11 +164,15 @@ public:
         pe_noise     = bgfx::createUniform("s_noise", bgfx::UniformType::Sampler);
 
         fog_params.noise_scale = 1.0f;
-        fog_params.density     = 0.5f;
+        fog_params.density     = 0.015f;
         fog_params.color_min   = glm::vec4(0, 0, 0, 0);
         fog_params.color_max   = glm::vec4(1, 1, 1, 1);
-        fog_params.box_min     = glm::vec3(-10, -10, -10);
-        fog_params.box_max     = glm::vec3(10, 10, 10);
+        fog_params.box_min     = model->aabb.min;
+        fog_params.box_max     = model->aabb.max;
+
+        light_params.u_ambient_light   = glm::vec3(.1, .1, .1);
+        light_params.u_dir_light_dir   = Transform::FORWARD;
+        light_params.u_dir_light_color = glm::vec3(1, 1, 1);
 
         blit.init();
     }
@@ -192,14 +200,8 @@ public:
         Transform& trans = scene.get<Transform>(camera_entity);
 
         bgfx::setViewFrameBuffer(Gfx::main_view(), main_fb);
-        glm::vec4 ambient_light(.1, .1, .1, 0);
-        bgfx::setUniform(u_ambient_light, glm::value_ptr(ambient_light));
-        glm::vec4 dir_light_dir(-15, 15, -20, 0);
-        bgfx::setUniform(u_dir_light_dir, glm::value_ptr(dir_light_dir));
-        glm::vec4 dir_light_color(1, 1, 1, 0);
-        bgfx::setUniform(u_dir_light_color, glm::value_ptr(dir_light_color));
-        glm::vec4 camera_pos(trans.position, 0);
-        bgfx::setUniform(u_camera_pos, glm::value_ptr(camera_pos));
+        light_params.u_camera_pos = glm::vec3(trans.position);
+        bgfx::setUniform(u_light_params, &light_params, UINT16_MAX);
         Systems::rendering(scene);
 
         auto scene_color = bgfx::getTexture(main_fb, 0);
@@ -209,9 +211,9 @@ public:
         blit.blit(Gfx::pe_view(), scene_color, 0, 0, Screen::draw_width(), Screen::draw_height());
 
         // volumetric fog rendering
-        Camera& camera   = scene.get<Camera>(camera_entity);
-        glm::mat4 view   = trans.view_matrix();
-        glm::mat4 proj   = camera.matrix();
+        Camera& camera = scene.get<Camera>(camera_entity);
+        glm::mat4 view = trans.view_matrix();
+        glm::mat4 proj = camera.matrix();
 
         bgfx::setViewTransform(Gfx::pe_view(), glm::value_ptr(view), glm::value_ptr(proj));
         bgfx::setViewRect(Gfx::pe_view(), 0, 0, Screen::draw_width(), Screen::draw_height());
@@ -236,7 +238,8 @@ public:
     }
 
     void on_gui() override {
-        ImGui::Begin("Test", nullptr, ImGuiWindowFlags_NoCollapse);
+        ImGui::ShowDemoWindow();
+        ImGui::Begin("Test", nullptr, 0);
         {
             if (ImGui::BeginTabBar("menu")) {
                 if (ImGui::BeginTabItem("Control")) {
@@ -277,26 +280,26 @@ public:
 
         program.reset();
         bgfx::destroy(u_diffuse_color);
-        bgfx::destroy(u_ambient_light);
-        bgfx::destroy(u_dir_light_dir);
-        bgfx::destroy(u_dir_light_color);
-        bgfx::destroy(u_camera_pos);
+        bgfx::destroy(u_light_params);
         bgfx::destroy(main_fb);
         model.reset();
     }
 
 private:
     void gui_control_tab() {
-        if (ImGui::CollapsingHeader("Camera")) {
-            CameraControlData& control = scene.get<CameraControlData>(camera_entity);
-            ImGui::SliderFloat("Speed", &control.walk_speed, 0.0f, 30.0f);
+        const ImGuiTreeNodeFlags header_flags = ImGuiTreeNodeFlags_DefaultOpen;
+
+        if (ImGui::CollapsingHeader("Camera", header_flags)) {
+            auto&& [trans, control] = scene.get<Transform, CameraControlData>(camera_entity);
+            ImGui::DragFloat3("Position", glm::value_ptr(trans.position), 0, 0, 0, "%.3f", ImGuiSliderFlags_NoInput);
+            int speed = control.walk_speed;
+            ImGui::SliderInt("Speed", &speed, 0, 30);
+            control.walk_speed = speed;
         }
 
-        if (ImGui::CollapsingHeader("Fog")) {
+        if (ImGui::CollapsingHeader("Fog", header_flags)) {
             ImGui::SliderFloat("Scale", &fog_params.noise_scale, 0.0f, 1.0f);
-            static float density = fog_params.density;
-            ImGui::SliderFloat("Density", &density, 0.0f, 1.0f);
-            fog_params.density = density / 10.0f;
+            ImGui::SliderFloat("Density", &fog_params.density, 0.0f, 0.1f);
 
             ImGuiColorEditFlags flags = ImGuiColorEditFlags_InputRGB
                                         | ImGuiColorEditFlags_PickerHueWheel
@@ -309,6 +312,26 @@ private:
             ImGui::ColorEdit4("Color max",
                               glm::value_ptr(fog_params.color_max),
                               flags);
+        }
+
+        if (ImGui::CollapsingHeader("Light", header_flags)) {
+            ImGuiColorEditFlags flags = ImGuiColorEditFlags_InputRGB
+                                        | ImGuiColorEditFlags_PickerHueWheel
+                                        | ImGuiColorEditFlags_Float;
+
+            ImGui::ColorEdit3("Ambient", glm::value_ptr(light_params.u_ambient_light), flags);
+            {
+                static float angle_yaw   = 0.0f;
+                static float angle_pitch = 45.0f;
+                ImGui::Text("Direction");
+                ImGui::SliderFloat("Yaw", &angle_yaw, 0.0f, 360.0f);
+                ImGui::SliderFloat("Pitch", &angle_pitch, -90.0f, 90.0f);
+                glm::mat4 mat                = glm::rotate(glm::mat4(1.0f), glm::radians(angle_yaw), Transform::UP);
+                mat                          = glm::rotate(mat, glm::radians(-angle_pitch), Transform::RIGHT);
+                glm::vec3 dir                = mat * glm::vec4(Transform::FORWARD, 0.0f);
+                light_params.u_dir_light_dir = dir;
+            }
+            ImGui::ColorEdit3("Color", glm::value_ptr(light_params.u_dir_light_color), flags);
         }
     }
 
@@ -420,10 +443,8 @@ private:
     std::shared_ptr<Shader> program;
     // todo: move these else where
     bgfx::UniformHandle u_diffuse_color = BGFX_INVALID_HANDLE;
-    bgfx::UniformHandle u_ambient_light = BGFX_INVALID_HANDLE;
-    bgfx::UniformHandle u_dir_light_dir = BGFX_INVALID_HANDLE;
-    bgfx::UniformHandle u_dir_light_color = BGFX_INVALID_HANDLE;
-    bgfx::UniformHandle u_camera_pos = BGFX_INVALID_HANDLE;
+    bgfx::UniformHandle u_light_params  = BGFX_INVALID_HANDLE;
+    LightParameters light_params;
 
     Blit blit;
 
