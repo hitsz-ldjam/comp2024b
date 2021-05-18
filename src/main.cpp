@@ -102,6 +102,11 @@ public:
 
     void on_awake() override {
         model           = Model::load_from_file_shared("./res/models/A_full.fbx");
+        printf(
+            "AABB: min(%f, %f, %f) max(%f, %f, %f)\n",
+            model->aabb.min.x, model->aabb.min.y, model->aabb.min.z,
+            model->aabb.max.x, model->aabb.max.y, model->aabb.max.z
+        );
         program         = std::make_shared<Shader>("./res/shaders/vs_blinn_phong.bin", "./res/shaders/fs_blinn_phong.bin");
         u_diffuse_color = bgfx::createUniform("u_diffuse_color", bgfx::UniformType::Vec4);
         u_ambient_light = bgfx::createUniform("u_ambient_light", bgfx::UniformType::Vec4);

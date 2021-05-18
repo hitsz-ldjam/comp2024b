@@ -34,14 +34,19 @@ struct Vertex {
 };
 
 
+struct AABB {
+    glm::vec3 min, max;
+};
+
+
 // todo: load from asset manager
 class Model final {
 public:
     Model() = default;
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
-    Model(Model&& other) noexcept ;
-    Model& operator=(Model&& other) noexcept ;
+    Model(Model&& other) noexcept;
+    Model& operator=(Model&& other) noexcept;
     ~Model();
 
     static std::optional<Model> load_from_file(const std::string& filename);
@@ -57,4 +62,5 @@ public:
     bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
 
     std::vector<MeshDataTuple> mdt;
+    AABB aabb;
 };

@@ -23,7 +23,8 @@ Model::Model(Model&& other) noexcept : vertices(std::move(other.vertices)),
                                        indices(std::move(other.indices)),
                                        vbh(other.vbh),
                                        ibh(other.ibh),
-                                       mdt(std::move(other.mdt)) {
+                                       mdt(std::move(other.mdt)),
+                                       aabb(std::move(other.aabb)) {
     other.vbh = BGFX_INVALID_HANDLE;
     other.ibh = BGFX_INVALID_HANDLE;
 }
@@ -35,6 +36,7 @@ Model& Model::operator=(Model&& other) noexcept {
     swap(vbh, other.vbh);
     swap(ibh, other.ibh);
     swap(mdt, other.mdt);
+    swap(aabb, other.aabb);
     return *this;
 }
 
@@ -73,6 +75,7 @@ std::optional<Model> Model::load_from_file(const std::string& filename) {
     //bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
 
     std::vector<MeshDataTuple> mdt;
+    std::pair<AABB, bool> aabb_hasvalue;
 
     const auto fbx_scene = load_fbx_model(filename);
     if(!fbx_scene) {
@@ -93,12 +96,24 @@ std::optional<Model> Model::load_from_file(const std::string& filename) {
                 return idx < 0 ? -idx - 1 : idx;
             }();
 
+            auto position = glm::vec3{
+                geometry->getVertices()[vert_idx].x,
+                geometry->getVertices()[vert_idx].y,
+                geometry->getVertices()[vert_idx].z,
+            };
+
+            if(aabb_hasvalue.second) {
+                aabb_hasvalue.first.min = glm::min(position, aabb_hasvalue.first.min);
+                aabb_hasvalue.first.max = glm::max(position, aabb_hasvalue.first.max);
+            }
+            else {
+                aabb_hasvalue.first.min = position;
+                aabb_hasvalue.first.max = position;
+                aabb_hasvalue.second = true;
+            }
+
             auto vertex = Vertex{
-                {
-                    geometry->getVertices()[vert_idx].x,
-                    geometry->getVertices()[vert_idx].y,
-                    geometry->getVertices()[vert_idx].z,
-                },
+                position,
                 {
                     geometry->getNormals()[face_idx].x,
                     geometry->getNormals()[face_idx].y,
@@ -163,6 +178,7 @@ std::optional<Model> Model::load_from_file(const std::string& filename) {
     //result.vbh = vbh;
     //result.ibh = ibh;
     result.mdt = std::move(mdt);
+    result.aabb = std::move(aabb_hasvalue.first);
 
     return result;
 }
