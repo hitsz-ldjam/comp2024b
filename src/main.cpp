@@ -254,10 +254,24 @@ public:
         ImGui::End();
 
         ImGui::SetNextWindowPos(ImVec2(10, 10));
+        ImGui::SetNextWindowSize(ImVec2(150.0f, 140.0f));
         if (ImGui::Begin("Infomation", nullptr, ImGuiWindowFlags_NoDecoration)) {
-            Transform& trans = scene.get<Transform>(camera_entity);
-            int density       = query_fog_density(trans.position);
-            ImGui::SliderInt("Density", &density, 0, 255, "%d");
+            Transform& trans      = scene.get<Transform>(camera_entity);
+            glm::vec3 right       = trans.right(); // we use right direction as it is always on X-Z plane
+            glm::vec2 dir         = glm::normalize(glm::vec2(right.x, right.z));
+            static const float pi = glm::pi<float>();
+            float angle           = acos(dir.x);
+            if (!signbit(dir.y)) {
+                angle = -angle;
+            }
+            draw_compass(angle, 100.0f, IM_COL32(100, 100, 150, 255), IM_COL32_WHITE);
+
+            int density = query_fog_density(trans.position);
+            ImGui::SameLine();
+            ImGui::VSliderInt("", ImVec2(25, 100.0f), &density, 0, 255);
+            float height = trans.position.y;
+            ImGui::PushItemWidth(-ImGui::GetContentRegionAvailWidth() * 0.3f);
+            ImGui::DragFloat("Height", &height, 0.0f, 0.0f, 0.0f, "%.2f", ImGuiSliderFlags_NoInput);
         }
         ImGui::End();
 
@@ -287,6 +301,40 @@ public:
     }
 
 private:
+    static void draw_compass(float angle, float size, ImU32 col_bg, ImU32 col_needle, float needle_scale = 0.8f) {
+        ImVec2 corner         = ImGui::GetCursorScreenPos();
+        float radius          = size / 2.0f;
+        ImVec2 center         = ImVec2(corner.x + radius, corner.y + radius);
+        auto& io              = ImGui::GetIO();
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddCircleFilled(center, radius, col_bg);
+
+        glm::vec2 points[]{
+            glm::vec2(0.0f, -1.0f),
+            glm::vec2(-0.2f, 0.0f),
+            glm::vec2(0.0f, 0.3f),
+            glm::vec2(0.2f, 0.0f)
+        };
+
+        angle        = -angle;
+        auto scale   = glm::mat2(radius * needle_scale);
+        auto rotate  = glm::mat2();
+        rotate[0][0] = cos(angle);
+        rotate[0][1] = -sin(angle);
+        rotate[1][0] = sin(angle);
+        rotate[1][1] = cos(angle);
+        auto mat     = rotate * scale;
+
+        auto offset = *(glm::vec2*)(&center);
+        for(auto& point: points) {
+            point = mat * point + offset;
+        }
+
+        ImVec2* im_points = (ImVec2*)points;
+        draw_list->AddConvexPolyFilled(im_points, std::size(points), col_needle);
+        ImGui::Dummy(ImVec2(2 * radius, 2 * radius));
+    }
+
     void load_fog_data(const char* path) {
         using std::ios_base;
         std::ifstream in_file(path, ios_base::binary | ios_base::ate);
