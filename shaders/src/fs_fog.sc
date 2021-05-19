@@ -104,7 +104,7 @@ float sample_fog(vec3 current_pos, vec3 backgroud_pos, vec3 camera_pos, vec3 box
     vec3 vsize = view_dir * step_size;
 
     vec3 curr_pos = camera_pos - vsize * random3(current_pos).x;
-    float density = 0;
+    float trans = 1.0f;
     for (int i = 0; i < max_steps; ++i) {
         curr_pos += vsize;
 
@@ -116,10 +116,15 @@ float sample_fog(vec3 current_pos, vec3 backgroud_pos, vec3 camera_pos, vec3 box
 
         // sample density here
         float sample = texture3D(s_noise, (curr_pos - u_box_min) / box_extent * u_noise_scale).x;
-        density += sample * u_density;
+
+        if (sample < 0.01f)
+            continue;
+
+        float curr_trans = exp(-u_density * sample * step_size);
+        trans *= curr_trans;
     }
 
-    return density;
+    return 1.0f - trans;
 }
 
 void main() {
@@ -133,5 +138,5 @@ void main() {
     vec3 box_extent = u_box_max - u_box_min;
     float density = sample_fog(current_pos, backgroud_pos, u_camera_pos, box_extent);
     vec4 color = mix(u_color_min, u_color_max, density);
-    gl_FragColor = vec4(color.xyz, density);
+    gl_FragColor = vec4(color);
 }

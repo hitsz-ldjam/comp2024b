@@ -283,8 +283,8 @@ bool Gui::process_event(const SDL_Event& event) {
 
         switch (event.button.button) {
         case SDL_BUTTON_LEFT: io.MouseDown[0] = true; break;
-        case SDL_BUTTON_MIDDLE: io.MouseDown[1] = true; break;
-        case SDL_BUTTON_RIGHT: io.MouseDown[2] = true; break;
+        case SDL_BUTTON_RIGHT: io.MouseDown[1] = true; break;
+        case SDL_BUTTON_MIDDLE: io.MouseDown[2] = true; break;
         case SDL_BUTTON_X1: io.MouseDown[3] = true; break;
         case SDL_BUTTON_X2: io.MouseDown[4] = true; break;
         default: break;
@@ -298,8 +298,8 @@ bool Gui::process_event(const SDL_Event& event) {
 
         switch (event.button.button) {
         case SDL_BUTTON_LEFT: io.MouseDown[0] = false; break;
-        case SDL_BUTTON_MIDDLE: io.MouseDown[1] = false; break;
-        case SDL_BUTTON_RIGHT: io.MouseDown[2] = false; break;
+        case SDL_BUTTON_RIGHT: io.MouseDown[1] = false; break;
+        case SDL_BUTTON_MIDDLE: io.MouseDown[2] = false; break;
         case SDL_BUTTON_X1: io.MouseDown[3] = false; break;
         case SDL_BUTTON_X2: io.MouseDown[4] = false; break;
         default: break;
