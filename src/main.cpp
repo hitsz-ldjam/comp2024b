@@ -151,8 +151,12 @@ public:
         pe_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, sizeof(FogParameters) / sizeof(glm::vec4));
         pe_shader = std::make_shared<Shader>("./res/shaders/vs_fog.bin", "./res/shaders/fs_fog.bin");
 
-        load_fog_data("./res/textures/Perlin_Noise.raw");
-        pe_noise = bgfx::createUniform("s_noise", bgfx::UniformType::Sampler);
+        if (load_fog_data("./res/textures/Perlin_Noise.raw"))
+            pe_noise = bgfx::createUniform("s_noise", bgfx::UniformType::Sampler);
+        else {
+            perror("failed to load fog data");
+            return;
+        }
 
         fog_params.noise_scale = 1.0f;
         fog_params.density     = 0.5f;
@@ -274,8 +278,6 @@ public:
             ImGui::DragFloat("Height", &height, 0.0f, 0.0f, 0.0f, "%.2f", ImGuiSliderFlags_NoInput);
         }
         ImGui::End();
-
-        ImGui::ShowDemoWindow();
     }
 
     bool on_closing() override {
@@ -326,7 +328,7 @@ private:
         auto mat     = rotate * scale;
 
         auto offset = *(glm::vec2*)(&center);
-        for(auto& point: points) {
+        for (auto& point : points) {
             point = mat * point + offset;
         }
 
@@ -335,9 +337,12 @@ private:
         ImGui::Dummy(ImVec2(2 * radius, 2 * radius));
     }
 
-    void load_fog_data(const char* path) {
+    bool load_fog_data(const char* path) {
         using std::ios_base;
         std::ifstream in_file(path, ios_base::binary | ios_base::ate);
+        if (!in_file.is_open()) {
+            return false;
+        }
         auto size = in_file.tellg();
         in_file.seekg(0, ios_base::beg);
         fog_data = std::vector<u8>(size);
@@ -346,6 +351,7 @@ private:
 
         const bgfx::Memory* mem = bgfx::copy(fog_data.data(), fog_data.size());
         pe_noise_tex            = bgfx::createTexture3D(FOG_TEXTURE_SIZE, FOG_TEXTURE_SIZE, FOG_TEXTURE_SIZE, false, bgfx::TextureFormat::R8, 0, mem);
+        return true;
     }
 
     u8 query_fog_density(const glm::vec3& pos) {
@@ -378,7 +384,7 @@ private:
 
         if (ImGui::CollapsingHeader("Camera", header_flags)) {
             auto&& [trans, control] = scene.get<Transform, CameraControlData>(camera_entity);
-            ImGui::DragFloat3("Position", glm::value_ptr(trans.position), 0, 0, 0, "%.3f", ImGuiSliderFlags_NoInput);
+            ImGui::DragFloat3("Position", glm::value_ptr(trans.position), 0, 0, 0, "%.3f");
             int speed = control.walk_speed;
             ImGui::SliderInt("Speed", &speed, 0, 30);
             control.walk_speed = speed;
